@@ -1,6 +1,14 @@
-# CNN_Timestacks
+# Python scripts and CNN weights associated with the article : "Automatic creation of storm impact database based on video monitoring and convolutional neural networks"
 
-Python scripts and CNN weights associated with the article : "Automatic creation of storm impact database based on video monitoring and convolutional neural networks"
+
+# Data
+
+
+
+
+
+
+
 
 # Weights for best models on both sites
 
