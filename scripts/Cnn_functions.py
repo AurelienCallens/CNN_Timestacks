@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Created on Mon Jul 6 10:15:22 2020
 
@@ -13,6 +15,8 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 from pycm import *
+from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.applications import VGG16
 
 
 def create_base_model(output=3):
@@ -105,6 +109,38 @@ def create_alex_model(output=3):
     alex_model.add(layers.Dense(output, activation='softmax'))
 
     return(alex_model)
+
+
+def create_incep_model(output=3, weights_cnn=None):
+    # Create the model
+    incep_model = InceptionV3(include_top=False, pooling='max',
+                              weights=weights_cnn, input_shape=(224, 224, 3))
+    model_incep = Sequential()
+    model_incep.add(incep_model)
+    # Add new layers
+    model_incep.add(layers.Flatten())
+    model_incep.add(layers.Dense(512, activation='relu'))
+    model_incep.add(layers.Dropout(0.5))
+    model_incep.add(layers.Dense(output, activation='softmax'))
+
+    return(incep_model)
+
+
+def create_vgg16_model(output=3, weights_cnn=None):
+    # Create the model
+    vgg_model = VGG16(include_top=False, pooling='max', weights=weights_cnn,
+                      input_shape=(224, 224, 3))
+
+    # Create the model
+    model_vgg = Sequential()
+    model_vgg.add(vgg_model)
+    # Add new layers
+    model_vgg.add(layers.Flatten())
+    model_vgg.add(layers.Dense(512, activation='relu'))
+    model_vgg.add(layers.Dropout(0.5))
+    model_vgg.add(layers.Dense(output, activation='softmax'))
+
+    return(model_vgg)
 
 
 def make_conf_mat(model, test_gen, train_gen, threshold=False, print=True):
