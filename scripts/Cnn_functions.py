@@ -12,11 +12,14 @@ This script regroups several functions useful for the CNN training :
 """
 import pandas as pd
 import numpy as np
+from timeit import default_timer as timer
+import tensorflow
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
-from pycm import *
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications import VGG16
+from tensorflow.keras.preprocessing import image
+from pycm import *
 
 
 def create_base_model(output=3):
@@ -112,6 +115,11 @@ def create_alex_model(output=3):
 
 
 def create_incep_model(output=3, weights_cnn=None):
+    """
+    Generate the Inception CNN architecture
+    :param num ouptut: number of output classes
+    :param weights_cnn: None or imagenet'
+    """
     # Create the model
     incep_model = InceptionV3(include_top=False, pooling='max',
                               weights=weights_cnn, input_shape=(224, 224, 3))
@@ -127,7 +135,11 @@ def create_incep_model(output=3, weights_cnn=None):
 
 
 def create_vgg16_model(output=3, weights_cnn=None):
-    # Create the model
+    """
+    Generate the VGG16 CNN architecture
+    :param num ouptut: number of output classes
+    :param weights_cnn: None or imagenet'
+    """
     vgg_model = VGG16(include_top=False, pooling='max', weights=weights_cnn,
                       input_shape=(224, 224, 3))
 
@@ -141,6 +153,57 @@ def create_vgg16_model(output=3, weights_cnn=None):
     model_vgg.add(layers.Dense(output, activation='softmax'))
 
     return(model_vgg)
+
+
+def generator_init(img_path, batch_size=32):
+
+    # Declare data augmentation techniques :
+    train_datagen = image.ImageDataGenerator(rescale=(1/255),
+                                             vertical_flip=True,
+                                             channel_shift_range=50.0,
+                                             brightness_range=(0.5, 1.5),
+                                             height_shift_range=0.2)
+
+    test_datagen = image.ImageDataGenerator(rescale=(1/255))
+
+    # Create the generators
+
+    train_generator = train_datagen.flow_from_directory(
+        directory=img_path + "/train/",
+        color_mode="rgb",
+        target_size=(224, 224),
+        batch_size=batch_size,
+        class_mode="categorical",
+        shuffle=True,
+        seed=42)
+
+    train_ov_generator = train_datagen.flow_from_directory(
+        directory=img_path + "/train_ov/",
+        color_mode="rgb",
+        target_size=(224, 224),
+        batch_size=batch_size,
+        class_mode="categorical",
+        shuffle=True,
+        seed=42)
+
+    val_generator = test_datagen.flow_from_directory(
+        directory=img_path + "/val/",
+        color_mode="rgb",
+        target_size=(224, 224),
+        batch_size=batch_size,
+        class_mode="categorical",
+        shuffle=True,
+        seed=42)
+
+    test_generator = test_datagen.flow_from_directory(
+        directory=img_path + "/test/",
+        color_mode="rgb",
+        target_size=(224, 224),
+        batch_size=1,
+        class_mode="categorical",
+        shuffle=False,
+        seed=42)
+    return(train_generator, train_ov_generator, val_generator, test_generator)
 
 
 def make_conf_mat(model, test_gen, train_gen, threshold=False, print=True):
@@ -172,3 +235,31 @@ def make_conf_mat(model, test_gen, train_gen, threshold=False, print=True):
         cm.stat(summary=True)
     else:
         return(cm)
+
+class StepDecay():
+    def __init__(self, initAlpha=0.01, factor=0.1, dropEvery=10):
+        # store the base initial learning rate, drop factor, and
+        # epochs to drop every
+        self.initAlpha = initAlpha
+        self.factor = factor
+        self.dropEvery = dropEvery
+
+    def __call__(self, epoch):
+        # compute the learning rate for the current epoch
+        exp = np.floor((1 + epoch) / self.dropEvery)
+        alpha = self.initAlpha * (self.factor ** exp)
+        # return the learning rate
+        return float(alpha)
+
+
+# Callback to record training time
+class TimingCallback(tensorflow.keras.callbacks.Callback):
+    def __init__(self, logs={}):
+        self.logs = []
+
+    def on_epoch_begin(self, epoch, logs={}):
+        self.starttime = timer()
+
+    def on_epoch_end(self, epoch, logs={}):
+        self.logs.append(timer()-self.starttime)
+
