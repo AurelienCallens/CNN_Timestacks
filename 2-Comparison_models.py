@@ -11,15 +11,13 @@ This script trains different CNN models and saves them
 import pickle
 import numpy as np
 
-from timeit import default_timer as timer
 from sklearn.utils import class_weight
 from numpy.random import seed
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler
-from tensorflow.keras.preprocessing import image
 from scripts.Cnn_functions import *
 from sklearn.utils import class_weight
-from scripts.Make_graphs import plot_image, plot_value_array, make_train_graphs
+from scripts.Make_graphs import make_train_graphs
 from scripts.Cnn_functions import make_conf_mat
 
 
@@ -37,90 +35,6 @@ config.gpu_options.allow_growth = True
 sess = tensorflow.Session(config=config)
 set_session(sess)
 """
-
-# Functions
-# # Initialize generators
-
-def generator_init(img_path, batch_size=32):
-
-    # Declare data augmentation techniques :
-    train_datagen = image.ImageDataGenerator(rescale=(1/255),
-                                             vertical_flip=True,
-                                             channel_shift_range=50.0,
-                                             brightness_range=(0.5, 1.5),
-                                             height_shift_range=0.2)
-
-    test_datagen = image.ImageDataGenerator(rescale=(1/255))
-
-    # Create the generators
-
-    train_generator = train_datagen.flow_from_directory(
-        directory=img_path + "/train/",
-        color_mode="rgb",
-        target_size=(224, 224),
-        batch_size=batch_size,
-        class_mode="categorical",
-        shuffle=True,
-        seed=42)
-
-    train_ov_generator = train_datagen.flow_from_directory(
-        directory=img_path + "/train_ov/",
-        color_mode="rgb",
-        target_size=(224, 224),
-        batch_size=batch_size,
-        class_mode="categorical",
-        shuffle=True,
-        seed=42)
-
-    val_generator = test_datagen.flow_from_directory(
-        directory=img_path + "/val/",
-        color_mode="rgb",
-        target_size=(224, 224),
-        batch_size=batch_size,
-        class_mode="categorical",
-        shuffle=True,
-        seed=42)
-
-    test_generator = test_datagen.flow_from_directory(
-        directory=img_path + "/test/",
-        color_mode="rgb",
-        target_size=(224, 224),
-        batch_size=1,
-        class_mode="categorical",
-        shuffle=False,
-        seed=42)
-    return(train_generator, train_ov_generator, val_generator, test_generator)
-
-
-# # Callbacks for CNN training
-
-class StepDecay(LearningRateDecay):
-    def __init__(self, initAlpha=0.01, factor=0.1, dropEvery=10):
-        # store the base initial learning rate, drop factor, and
-        # epochs to drop every
-        self.initAlpha = initAlpha
-        self.factor = factor
-        self.dropEvery = dropEvery
-
-    def __call__(self, epoch):
-        # compute the learning rate for the current epoch
-        exp = np.floor((1 + epoch) / self.dropEvery)
-        alpha = self.initAlpha * (self.factor ** exp)
-        # return the learning rate
-        return float(alpha)
-
-
-# Callback to record training time
-class TimingCallback(tensorflow.keras.callbacks.Callback):
-    def __init__(self, logs={}):
-        self.logs = []
-
-    def on_epoch_begin(self, epoch, logs={}):
-        self.starttime = timer()
-
-    def on_epoch_end(self, epoch, logs={}):
-        self.logs.append(timer()-self.starttime)
-
 
 # Analysis
 # # Generator initialization
@@ -252,7 +166,6 @@ pickle.dump(Res2, filehandler)
 alex_model.save_weights("Results/alex_model_OV_27e_bs32.h5")
 
 # VGG16 model
-
 
 cb = TimingCallback()
 schedule = StepDecay(initAlpha=0.001, factor=0.5, dropEvery=10)
